@@ -10,7 +10,9 @@ def _database_url():
     database_url = os.environ.get("DATABASE_URL")
     if database_url:
         if database_url.startswith("postgres://"):
-            return database_url.replace("postgres://", "postgresql://", 1)
+            return database_url.replace("postgres://", "postgresql+psycopg2://", 1)
+        if database_url.startswith("postgresql://"):
+            return database_url.replace("postgresql://", "postgresql+psycopg2://", 1)
         return database_url
 
     if os.environ.get("RENDER"):
