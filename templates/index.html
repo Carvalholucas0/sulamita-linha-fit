@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f6eedf">
+    <meta name="description" content="Descubra qual momento da Linha Fit da Sulamita combina com você.">
+    <title>Linha Fit | Sulamita Bistrô</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <header class="site-header">
+        <a class="brand" href="/" aria-label="Sulamita Bistrô">
+            <span class="brand-mark" aria-hidden="true"><span>SULA</span><span>MITA</span></span>
+            <span class="brand-name">SULAMITA <span>BISTRÔ</span></span>
+        </a>
+        <span class="header-note">é mais que empada, é Sulamita</span>
+    </header>
+
+    <main class="page-shell">
+        <section id="welcome-screen" class="screen welcome-screen">
+            <div class="hero-copy">
+                <p class="eyebrow"><span></span> 31/10 · são francisco</p>
+                <h1>Um novo jeito<br>de saborear o <em>leve.</em></h1>
+                <p class="intro">Vem aí a Linha Fit da Sulamita: nossas empadas e quiches em novas versões para acompanhar sua rotina. Responda e descubra qual combina com você.</p>
+                <div class="hero-details">
+                    <span class="detail-icon" aria-hidden="true">✳</span>
+                    <span>É mais que empada. É Sulamita — com um toque leve e muito sabor.</span>
+                </div>
+            </div>
+
+            <div class="form-panel">
+                <div class="panel-topline"><span>01</span><span>descubra seu sabor</span></div>
+                <form id="customer-form">
+                    <label for="name">Seu nome</label>
+                    <input id="name" name="name" type="text" autocomplete="name" maxlength="100" placeholder="Como podemos te chamar?" required>
+
+                    <label for="whatsapp">WhatsApp</label>
+                    <input id="whatsapp" name="whatsapp" type="tel" autocomplete="tel" maxlength="30" placeholder="(00) 00000-0000" required>
+
+                    <label for="email">E-mail <span class="optional">opcional</span></label>
+                    <input id="email" name="email" type="email" autocomplete="email" maxlength="254" placeholder="voce@email.com">
+
+                    <label class="check-row">
+                        <input id="consent" name="consent" type="checkbox" required>
+                        <span>Concordo que a Sulamita use meus dados para registrar minha participação e apresentar meu resultado.</span>
+                    </label>
+                    <label class="check-row marketing-row">
+                        <input id="marketing-consent" name="marketing_consent" type="checkbox">
+                        <span>Quero receber novidades e informações sobre a Linha Fit pelo WhatsApp ou e-mail. <span class="optional">opcional</span></span>
+                    </label>
+                    <p class="privacy-note">Seus dados serão usados pela Sulamita para esta ação. Você pode pedir a remoção a qualquer momento.</p>
+                    <button class="button button-primary" type="submit">Descobrir meu momento <span aria-hidden="true">→</span></button>
+                    <p id="form-error" class="form-error" role="alert" aria-live="polite"></p>
+                </form>
+            </div>
+            <div class="fit-burst" aria-hidden="true"><span>LINHA<br>FIT</span></div>
+        </section>
+
+        <section id="quiz-screen" class="screen quiz-screen" hidden>
+            <div class="quiz-card">
+                <div class="quiz-heading">
+                    <p class="eyebrow"><span></span> lançamento linha fit</p>
+                    <p class="question-counter"><span id="current-question">1</span><span class="counter-divider">/</span><span id="total-questions">4</span></p>
+                </div>
+                <div class="progress-track"><div id="progress-fill"></div></div>
+                <p class="question-kicker">um pouquinho sobre você</p>
+                <h2 id="question-text"></h2>
+                <div id="options-container" class="options-container"></div>
+                <div class="quiz-navigation">
+                    <button id="prev-btn" class="button button-quiet" type="button">← Voltar</button>
+                    <button id="next-btn" class="button button-primary" type="button" disabled>Continuar <span aria-hidden="true">→</span></button>
+                </div>
+                <p id="quiz-error" class="form-error" role="alert" aria-live="polite"></p>
+            </div>
+            <div class="quiz-aside">
+                <span class="aside-flower" aria-hidden="true">✳</span>
+                <p>É mais que empada.<br>É Sulamita.</p>
+                <span class="aside-line"></span>
+                <small>SULAMITA BISTRÔ</small>
+            </div>
+        </section>
+
+        <section id="result-screen" class="screen result-screen" hidden>
+            <div class="result-card">
+                <p class="eyebrow"><span></span> esse é o seu momento</p>
+                <div class="result-symbol" aria-hidden="true">✳</div>
+                <h2 id="result-title"></h2>
+                <p id="result-description" class="result-description"></p>
+                <p id="result-accent" class="result-accent"></p>
+                <div class="result-footer">
+                    <span>feito com carinho</span>
+                    <span class="result-rule"></span>
+                    <span>SULAMITA BISTRÔ</span>
+                </div>
+            </div>
+            <div class="result-actions">
+                <p>Obrigada por fazer parte desse começo.<br>A gente se encontra na próxima pausa.</p>
+                <a class="button button-primary" href="https://www.instagram.com/sulamitabistro/" target="_blank" rel="noopener noreferrer">Acompanhar a Sulamita <span aria-hidden="true">↗</span></a>
+            </div>
+        </section>
+    </main>
+    <footer class="site-footer">
+        <span>com afeto, Sulamita Bistrô</span>
+        <span>LANÇAMENTO LINHA FIT</span>
+    </footer>
+    <script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
+</body>
+</html>

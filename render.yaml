@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: sulamita-linha-fit
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: ADMIN_USER
+        value: sulamita
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: SHEETS_SERVICE_ACCOUNT_JSON
+        sync: false
+      - key: SHEETS_SPREADSHEET_ID
+        sync: false

@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Inscrições | Sulamita Linha Fit</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+</head>
+<body>
+    <main class="admin-shell">
+        <header class="admin-header">
+            <div>
+                <p class="eyebrow">SULAMITA BISTRÔ · LINHA FIT</p>
+                <h1>Participantes</h1>
+                <p>Exibindo as inscrições mais recentes (até 200).</p>
+            </div>
+            <a class="export-button" href="{{ url_for('export_csv') }}">Baixar CSV</a>
+        </header>
+        {% if sheet_sync_configured %}
+        <section class="sync-status" aria-live="polite">
+            {% if pending_jobs %}
+            <strong>{{ pending_count }} cópia(s) aguardando sincronização</strong>
+            <p>As inscrições estão salvas no banco principal. Abra o painel novamente para tentar sincronizar as pendências.</p>
+            {% if pending_count > pending_jobs|length %}<p>Exibindo os 10 erros/pendências mais recentes.</p>{% endif %}
+            <ul>
+                {% for job in pending_jobs[:5] %}
+                <li>Inscrição #{{ job.registration_id }} · {{ job.last_error or "aguardando nova tentativa" }}</li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <strong>Planilha sincronizada</strong>
+            <p>{{ synced_count }} inscrição(ões) copiadas para o Google Sheets.</p>
+            {% endif %}
+        </section>
+        {% else %}
+        <section class="sync-status sync-warning">
+            <strong>Cópia automática ainda não configurada</strong>
+            <p>As inscrições são salvas no banco principal. Configure as credenciais do Google Sheets no serviço publicado para ativar a cópia e sincronizar os cadastros pendentes.</p>
+        </section>
+        {% endif %}
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>Nome</th><th>WhatsApp</th><th>E-mail</th><th>Perfil</th><th>Novidades</th><th>Planilha</th><th>Data (UTC)</th></tr></thead>
+                <tbody>
+                    {% for registration in registrations %}
+                    <tr>
+                        <td>{{ registration.name }}</td>
+                        <td>{{ registration.whatsapp }}</td>
+                        <td>{{ registration.email or "—" }}</td>
+                        <td>{{ profiles[registration.profile]["title"] }}</td>
+                        <td>{{ "Sim" if registration.marketing_consent else "Não" }}</td>
+                        <td>{{ "Sincronizada" if registration.sheet_sync and registration.sheet_sync.synced_at else "Pendente" }}</td>
+                        <td>{{ registration.created_at.strftime("%d/%m/%Y %H:%M") }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="7" class="empty-state">Ainda não há inscrições.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </main>
+</body>
+</html>
