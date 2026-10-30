@@ -1,9 +1,11 @@
 import base64
+import io
 import unittest
 from unittest.mock import patch
 
 from app import create_app
 from models import Lead, MarketingConsentEvent, Registration, SheetSyncJob, db
+from openpyxl import load_workbook
 from quiz import QUESTIONS
 from sheets import SheetSyncError
 
@@ -204,9 +206,21 @@ class SulamitaAppTests(unittest.TestCase):
             self.assertEqual(Registration.query.count(), 0)
             self.assertEqual(Lead.query.count(), 0)
 
-    def test_admin_and_csv_require_authentication_and_export_lead_data(self):
+    def test_admin_and_excel_export_require_authentication_and_summarize_leads(self):
         self.assertEqual(self.client.get("/admin").status_code, 401)
-        self.client.post("/api/submit", json=self.valid_payload())
+        self.assertEqual(self.client.get("/admin/export.xlsx").status_code, 401)
+        first_payload = self.valid_payload()
+        first_payload["answers"]["occasion"] = "after_workout"
+        self.client.post("/api/submit", json=first_payload)
+        second_payload = self.valid_payload()
+        second_payload.update(
+            {
+                "name": "=1+1",
+                "marketing_consent": True,
+                "submission_key": "22222222-2222-4222-8222-222222222222",
+            }
+        )
+        self.client.post("/api/submit", json=second_payload)
 
         credentials = base64.b64encode(b"test-admin:test-password").decode()
         headers = {"Authorization": f"Basic {credentials}"}
@@ -214,13 +228,36 @@ class SulamitaAppTests(unittest.TestCase):
         self.assertEqual(admin_response.status_code, 200)
         self.assertIn("São Francisco, Niterói", admin_response.get_data(as_text=True))
 
-        response = self.client.get("/admin/export.csv", headers=headers)
+        response = self.client.get("/admin/export.xlsx", headers=headers)
         self.assertEqual(response.status_code, 200)
-        self.assertIn("Bairro/cidade", response.get_data(as_text=True))
-        self.assertIn("ID do cadastro", response.get_data(as_text=True))
-        self.assertIn("Ana,1,", response.get_data(as_text=True))
-        self.assertIn("Respostas (IDs e textos)", response.get_data(as_text=True))
-        self.assertIn("São Francisco, Niterói", response.get_data(as_text=True))
+        self.assertEqual(
+            response.mimetype,
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        workbook = load_workbook(io.BytesIO(response.data), data_only=True)
+        self.assertEqual(workbook.sheetnames, ["Contatos", "Respostas", "Resumo"])
+
+        contacts = workbook["Contatos"]
+        self.assertEqual(contacts.max_row, 2)
+        self.assertEqual(contacts["A2"].value, "'=1+1")
+        self.assertEqual(contacts["B2"].value, "11999999999")
+        self.assertEqual(contacts["C2"].value, "São Francisco, Niterói")
+        self.assertEqual(contacts["E2"].value, 2)
+        self.assertEqual(contacts["F2"].value, "Sim")
+        self.assertEqual(contacts["A2"].data_type, "s")
+
+        answers = workbook["Respostas"]
+        self.assertEqual(answers.max_row, 3)
+        self.assertEqual(answers["G2"].value, "Depois da corrida, caminhada ou treino. Afinal, eu treino pra isso!")
+        self.assertEqual(answers["K2"].value, "Não")
+        self.assertEqual(answers["K3"].value, "Sim")
+        self.assertEqual(answers["B3"].value, "'=1+1")
+
+        summary = workbook["Resumo"]
+        self.assertEqual(summary["B1"].value, 1)
+        self.assertEqual(summary["B2"].value, 2)
+        self.assertEqual(summary["B3"].value, 1)
+        self.assertEqual(summary["B4"].value, 0)
 
     def test_landing_and_privacy_pages_render(self):
         response = self.client.get("/")

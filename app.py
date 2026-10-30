@@ -1,12 +1,15 @@
-import csv
 import io
 import json
 import secrets
+from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from functools import wraps
 
-from flask import Flask, Response, jsonify, render_template, request
+from flask import Flask, Response, jsonify, render_template, request, send_file
+from openpyxl import Workbook
+from openpyxl.styles import Alignment, Font, PatternFill
+from openpyxl.worksheet.table import Table, TableStyleInfo
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from config import Config
@@ -404,110 +407,181 @@ def create_app(test_config=None):
             synced_count=synced_count,
         )
 
-    @app.get("/admin/export.csv")
+    @app.get("/admin/export.xlsx")
     @require_admin
-    def export_csv():
-        output = io.StringIO()
-        writer = csv.writer(output)
-        writer.writerow(
-            [
-                "Nome",
-                "ID do cadastro",
-                "E-mail legado",
-                "WhatsApp",
-                "WhatsApp normalizado",
-                "Bairro/cidade",
-                "Perfil",
-                "Frequência declarada",
-                "Ocasião de consumo",
-                "Produto de interesse declarado",
-                "Experiência preferida",
-                "Assunto de interesse",
-                "Respostas (IDs e textos)",
-                "Pontuação por perfil",
-                "Origem da campanha",
-                "Versão do quiz",
-                "Aceita novidades",
-                "Data da decisão de autorização para novidades",
-                "Versão do texto apresentado",
-                "Aceite do aviso de privacidade",
-                "Versão do aviso de privacidade",
-                "Status Google Sheets",
-                "Data/hora UTC",
-            ]
-        )
+    def export_excel():
+        workbook = Workbook()
+        contacts_sheet = workbook.active
+        contacts_sheet.title = "Contatos"
+        answers_sheet = workbook.create_sheet("Respostas")
+        summary_sheet = workbook.create_sheet("Resumo")
+        header_fill = PatternFill("solid", fgColor="82371F")
+        header_font = Font(color="FFFFFF", bold=True)
 
-        def spreadsheet_safe(value):
-            value = str(value or "")
-            if value.startswith(("=", "+", "-", "@", "\t", "\r")):
-                return "'" + value
-            return value
+        def safe_text(value):
+            text = str(value or "")
+            return f"'{text}" if text.startswith(("=", "+", "-", "@", "\t", "\r")) else text
 
-        registrations = Registration.query.order_by(Registration.created_at.desc()).all()
-        for registration in registrations:
-            answers = json.loads(registration.answers_json)
-            answer_snapshot = json.loads(registration.answer_snapshot_json or "{}")
-            answer_summary = " | ".join(
-                f"{question['question']} [{question_id}={question['answer_id']}]: "
-                f"{question['answer']}"
-                for question_id, question in answer_snapshot.items()
-            )
-            if not answer_summary:
-                answer_summary = " | ".join(
-                    f"{question_id}={answer_id}" for question_id, answer_id in answers.items()
+        def utc_datetime(value):
+            if value is None:
+                return None
+            if value.tzinfo is None:
+                value = value.replace(tzinfo=timezone.utc)
+            return value.astimezone(timezone.utc).replace(tzinfo=None)
+
+        def add_table(sheet, headers, rows, table_name):
+            sheet.append(headers)
+            for row in rows:
+                sheet.append(row)
+            for cell in sheet[1]:
+                cell.fill = header_fill
+                cell.font = header_font
+                cell.alignment = Alignment(wrap_text=True, vertical="center")
+            for row in sheet.iter_rows(min_row=2):
+                for cell in row:
+                    cell.alignment = Alignment(wrap_text=True, vertical="top")
+            sheet.freeze_panes = "A2"
+            sheet.auto_filter.ref = sheet.dimensions
+            if sheet.max_row > 1:
+                table = Table(displayName=table_name, ref=sheet.dimensions)
+                table.tableStyleInfo = TableStyleInfo(
+                    name="TableStyleMedium2",
+                    showFirstColumn=False,
+                    showLastColumn=False,
+                    showRowStripes=True,
+                    showColumnStripes=False,
                 )
-            scores = json.loads(registration.score_json or "{}")
-            consent_event = MarketingConsentEvent.query.filter_by(
-                registration_id=registration.id
-            ).one_or_none()
-            writer.writerow(
+                sheet.add_table(table)
+            for column in sheet.columns:
+                letter = column[0].column_letter
+                width = max(
+                    (len(str(cell.value or "")) for cell in column),
+                    default=10,
+                )
+                sheet.column_dimensions[letter].width = min(max(width + 2, 14), 42)
+
+        leads = Lead.query.order_by(Lead.name.asc(), Lead.id.asc()).all()
+        registrations = Registration.query.order_by(Registration.created_at.asc()).all()
+        registrations_by_lead = {}
+        for registration in registrations:
+            if registration.lead_id is not None:
+                registrations_by_lead.setdefault(registration.lead_id, []).append(registration)
+
+        profile_titles = {
+            profile_id: profile["title"] for profile_id, profile in ALL_PROFILES.items()
+        }
+        contacts_rows = []
+        for lead in leads:
+            history = registrations_by_lead.get(lead.id, [])
+            latest = history[-1] if history else None
+            contacts_rows.append(
                 [
-                    spreadsheet_safe(registration.name),
-                    registration.id,
-                    spreadsheet_safe(registration.email),
-                    spreadsheet_safe(registration.whatsapp),
-                    spreadsheet_safe(registration.whatsapp_normalized),
-                    spreadsheet_safe(registration.neighborhood),
-                    spreadsheet_safe(ALL_PROFILES[registration.profile]["title"]),
-                    spreadsheet_safe(format_preference("frequency", registration.frequency)),
-                    spreadsheet_safe(format_preference("occasion", registration.occasion)),
-                    spreadsheet_safe(format_preference("product", registration.product_interest)),
-                    spreadsheet_safe(format_preference("experience", registration.experience_preference)),
-                    spreadsheet_safe(format_preference("news", registration.communication_interest)),
-                    spreadsheet_safe(answer_summary),
-                    spreadsheet_safe(
-                        " | ".join(
-                            f"{profile_id}: {score}"
-                            for profile_id, score in scores.items()
-                        )
-                    ),
-                    spreadsheet_safe(registration.campaign_source),
-                    spreadsheet_safe(registration.quiz_version),
-                    "Sim" if registration.marketing_consent else "Não",
-                    consent_event.created_at.isoformat() if consent_event else "",
-                    consent_event.text_version if consent_event else "",
-                    (
-                        registration.privacy_notice_accepted_at.isoformat()
-                        if registration.privacy_notice_accepted_at
-                        else ""
-                    ),
-                    registration.privacy_notice_version or "",
-                    (
-                        "Sincronizada"
-                        if registration.sheet_sync and registration.sheet_sync.synced_at
-                        else "Pendente"
-                    ),
-                    registration.created_at.isoformat(),
+                    safe_text(lead.name),
+                    safe_text(lead.whatsapp),
+                    safe_text(lead.neighborhood),
+                    profile_titles.get(latest.profile, "—") if latest else "—",
+                    len(history),
+                    "Sim" if lead.marketing_consent else "Não",
+                    utc_datetime(lead.updated_at),
                 ]
             )
+        add_table(
+            contacts_sheet,
+            [
+                "Nome",
+                "WhatsApp",
+                "Bairro / cidade",
+                "Perfil mais recente",
+                "Participações",
+                "Aceita novidades no WhatsApp?",
+                "Última atualização (UTC)",
+            ],
+            contacts_rows,
+            "Contatos",
+        )
+        for cell in contacts_sheet["G"][1:]:
+            cell.number_format = "dd/mm/yyyy hh:mm"
 
-        return Response(
-            output.getvalue(),
-            mimetype="text/csv; charset=utf-8",
-            headers={
-                "Content-Disposition": 'attachment; filename="sulamita-linha-fit-leads.csv"',
-                "Cache-Control": "no-store",
-            },
+        answer_rows = []
+        for registration in registrations:
+            answer_snapshot = json.loads(registration.answer_snapshot_json or "{}")
+            answers = json.loads(registration.answers_json)
+            response_values = []
+            for question in QUESTIONS:
+                saved_answer = answer_snapshot.get(question["id"], {}).get("answer")
+                if saved_answer is None:
+                    saved_answer = option_label(question["id"], answers.get(question["id"]))
+                response_values.append(safe_text(saved_answer))
+            answer_rows.append(
+                [
+                    utc_datetime(registration.created_at),
+                    safe_text(registration.name),
+                    safe_text(registration.whatsapp),
+                    safe_text(registration.neighborhood),
+                    profile_titles.get(registration.profile, registration.profile),
+                    *response_values,
+                    "Sim" if registration.marketing_consent else "Não",
+                    utc_datetime(registration.marketing_consent_decided_at),
+                ]
+            )
+        add_table(
+            answers_sheet,
+            [
+                "Data e hora (UTC)",
+                "Nome",
+                "WhatsApp",
+                "Bairro / cidade",
+                "Perfil",
+                *[question["text"] for question in QUESTIONS],
+                "Aceita novidades no WhatsApp?",
+                "Data da decisão sobre mensagens (UTC)",
+            ],
+            answer_rows,
+            "Respostas",
+        )
+        for column_name in ("A", "L"):
+            for cell in answers_sheet[column_name][1:]:
+                cell.number_format = "dd/mm/yyyy hh:mm"
+
+        profile_counts = Counter(
+            profile_titles.get(registration.profile, registration.profile)
+            for registration in registrations
+        )
+        opted_in = sum(1 for lead in leads if lead.marketing_consent)
+        summary_rows = [
+            ["Contatos únicos", len(leads)],
+            ["Participações registradas", len(registrations)],
+            ["Aceitaram receber novidades", opted_in],
+            ["Não aceitaram receber novidades", len(leads) - opted_in],
+            ["", ""],
+            ["Perfil", "Participações"],
+        ]
+        summary_rows.extend(
+            [
+                profile["title"],
+                profile_counts.get(profile["title"], 0),
+            ]
+            for profile in PROFILES.values()
+        )
+        for row in summary_rows:
+            summary_sheet.append(row)
+        summary_sheet["A1"].font = Font(size=16, bold=True, color="552616")
+        for cell in summary_sheet[6]:
+            cell.fill = header_fill
+            cell.font = header_font
+        summary_sheet.column_dimensions["A"].width = 38
+        summary_sheet.column_dimensions["B"].width = 22
+        summary_sheet.freeze_panes = "A7"
+
+        output = io.BytesIO()
+        workbook.save(output)
+        output.seek(0)
+        return send_file(
+            output,
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            as_attachment=True,
+            download_name="sulamita-linha-fit-relatorio.xlsx",
+            max_age=0,
         )
 
     return app

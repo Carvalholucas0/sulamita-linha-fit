@@ -1,6 +1,6 @@
 # Sulamita Bistrô — Linha Fit
 
-Quiz mobile-first para o evento de lançamento da Linha Fit, com resultado “Qual SulaLover é você?”, cadastro obrigatório para participação nos sorteios, área administrativa protegida, exportação CSV e cópia opcional para Google Sheets.
+Quiz mobile-first para o evento de lançamento da Linha Fit, com resultado “Qual SulaLover é você?”, cadastro obrigatório para participação nos sorteios, área administrativa protegida, relatório Excel e cópia opcional para Google Sheets.
 
 ## Executar localmente
 
@@ -31,7 +31,7 @@ Ao iniciar, o aplicativo cria as tabelas novas e executa uma migração aditiva 
 
 ## Painel e exportação
 
-O painel `/admin` exige autenticação HTTP Basic usando `ADMIN_USER` e `ADMIN_PASSWORD`. Ele mostra até 200 contatos únicos, o resultado e as preferências mais recentes, além do histórico de respostas e autorizações. O CSV inclui o histórico completo; guarde-o em local privado, pois contém dados pessoais.
+O painel `/admin` exige autenticação HTTP Basic usando `ADMIN_USER` e `ADMIN_PASSWORD`. Ele mostra até 200 contatos únicos, o resultado e as preferências mais recentes, além do histórico de respostas e autorizações. O botão de exportação baixa um arquivo Excel com abas separadas para contatos únicos, cada participação/respostas e resumo do evento. Guarde o arquivo em local privado, pois contém dados pessoais.
 
 ## Google Sheets opcional
 

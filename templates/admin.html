@@ -17,7 +17,7 @@
                 <h1>Leads e SulaLovers</h1>
                 <p>Exibindo até 200 contatos únicos, com o resultado mais recente de cada um.</p>
             </div>
-            <a class="export-button" href="{{ url_for('export_csv') }}">Baixar histórico CSV</a>
+            <a class="export-button" href="{{ url_for('export_excel') }}">Baixar relatório Excel</a>
         </header>
         {% if sheet_sync_configured %}
         <section class="sync-status" aria-live="polite">
