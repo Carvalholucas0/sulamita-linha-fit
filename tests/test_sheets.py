@@ -7,7 +7,12 @@ from unittest.mock import patch
 import gspread
 from google.oauth2.service_account import Credentials
 
-from quiz import PROFILES, QUESTIONS
+from quiz import (
+    PROFILES,
+    QUESTIONS,
+    build_answer_snapshot,
+    build_score_snapshot,
+)
 from sheets import HEADERS, SheetSyncError, registration_values, sync_registration
 
 
@@ -18,11 +23,34 @@ class GoogleSheetsSyncTests(unittest.TestCase):
             name="Ana",
             email=None,
             whatsapp="11999999999",
+            whatsapp_normalized="+5511999999999",
+            neighborhood="São Francisco, Niterói",
             marketing_consent=False,
+            marketing_consent_at=None,
+            marketing_consent_version=None,
+            marketing_consent_decided_at=datetime(2026, 10, 27, tzinfo=timezone.utc),
+            marketing_consent_text_version="whatsapp-ofertas-v1",
             answers_json=json.dumps(
                 {question["id"]: question["options"][0]["id"] for question in QUESTIONS}
             ),
-            profile="pratica",
+            answer_snapshot_json=json.dumps(
+                build_answer_snapshot(
+                    {question["id"]: question["options"][0]["id"] for question in QUESTIONS}
+                )
+            ),
+            score_json=json.dumps(
+                build_score_snapshot(
+                    {question["id"]: question["options"][0]["id"] for question in QUESTIONS}
+                )
+            ),
+            frequency="weekly",
+            occasion="any_day",
+            product_interest="quiches",
+            experience_preference="store_combo",
+            communication_interest="home_orders",
+            campaign_source="Evento Linha Fit — São Francisco — 31/10/2026",
+            quiz_version="sulalover-2026-10-29-v1",
+            profile="raiz",
             created_at=datetime(2026, 10, 27, tzinfo=timezone.utc),
         )
 
@@ -31,9 +59,11 @@ class GoogleSheetsSyncTests(unittest.TestCase):
         self.assertEqual(len(row), len(HEADERS))
         self.assertEqual(row[0], 3)
         self.assertEqual(row[1], "Ana")
-        self.assertEqual(row[2], "")
-        self.assertIn(QUESTIONS[0]["options"][0]["text"], row[5])
-        self.assertEqual(row[7], "Não")
+        self.assertEqual(row[3], "11999999999")
+        self.assertIn(QUESTIONS[0]["options"][0]["text"], row[12])
+        self.assertEqual(row[16], "Não")
+        self.assertEqual(row[17], "2026-10-27T00:00:00+00:00")
+        self.assertEqual(row[18], "whatsapp-ofertas-v1")
 
     def test_sync_writes_to_stable_row_as_raw_values(self):
         registration = SimpleNamespace(
@@ -41,11 +71,34 @@ class GoogleSheetsSyncTests(unittest.TestCase):
             name="=not a formula",
             email=None,
             whatsapp="11999999999",
+            whatsapp_normalized="+5511999999999",
+            neighborhood="São Francisco, Niterói",
             marketing_consent=False,
+            marketing_consent_at=None,
+            marketing_consent_version=None,
+            marketing_consent_decided_at=datetime(2026, 10, 27, tzinfo=timezone.utc),
+            marketing_consent_text_version="whatsapp-ofertas-v1",
             answers_json=json.dumps(
                 {question["id"]: question["options"][0]["id"] for question in QUESTIONS}
             ),
-            profile="pratica",
+            answer_snapshot_json=json.dumps(
+                build_answer_snapshot(
+                    {question["id"]: question["options"][0]["id"] for question in QUESTIONS}
+                )
+            ),
+            score_json=json.dumps(
+                build_score_snapshot(
+                    {question["id"]: question["options"][0]["id"] for question in QUESTIONS}
+                )
+            ),
+            frequency="weekly",
+            occasion="any_day",
+            product_interest="quiches",
+            experience_preference="store_combo",
+            communication_interest="home_orders",
+            campaign_source="Evento Linha Fit — São Francisco — 31/10/2026",
+            quiz_version="sulalover-2026-10-29-v1",
+            profile="raiz",
             created_at=datetime(2026, 10, 27, tzinfo=timezone.utc),
         )
         client = patch("gspread.authorize").start()
@@ -70,7 +123,7 @@ class GoogleSheetsSyncTests(unittest.TestCase):
         client.return_value.set_timeout.assert_called_once_with((5, 15))
         worksheet.update.assert_called_once()
         args, kwargs = worksheet.update.call_args
-        self.assertEqual(args[0], "A5:I5")
+        self.assertEqual(args[0], "A5:V5")
         self.assertEqual(kwargs["value_input_option"], "RAW")
         self.assertEqual(args[1][0][1], "=not a formula")
 

@@ -3,7 +3,10 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Inscrições | Sulamita Linha Fit</title>
+    <title>Leads | Sulamita Linha Fit</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
 </head>
 <body>
@@ -11,10 +14,10 @@
         <header class="admin-header">
             <div>
                 <p class="eyebrow">SULAMITA BISTRÔ · LINHA FIT</p>
-                <h1>Participantes</h1>
-                <p>Exibindo as inscrições mais recentes (até 200).</p>
+                <h1>Leads e SulaLovers</h1>
+                <p>Exibindo até 200 contatos únicos, com o resultado mais recente de cada um.</p>
             </div>
-            <a class="export-button" href="{{ url_for('export_csv') }}">Baixar CSV</a>
+            <a class="export-button" href="{{ url_for('export_csv') }}">Baixar histórico CSV</a>
         </header>
         {% if sheet_sync_configured %}
         <section class="sync-status" aria-live="polite">
@@ -24,36 +27,93 @@
             {% if pending_count > pending_jobs|length %}<p>Exibindo os 10 erros/pendências mais recentes.</p>{% endif %}
             <ul>
                 {% for job in pending_jobs[:5] %}
-                <li>Inscrição #{{ job.registration_id }} · {{ job.last_error or "aguardando nova tentativa" }}</li>
+                <li>Cadastro #{{ job.registration_id }} · {{ job.last_error or "aguardando nova tentativa" }}</li>
                 {% endfor %}
             </ul>
             {% else %}
             <strong>Planilha sincronizada</strong>
-            <p>{{ synced_count }} inscrição(ões) copiadas para o Google Sheets.</p>
+            <p>{{ synced_count }} cadastro(s) copiados para o Google Sheets.</p>
             {% endif %}
         </section>
         {% else %}
         <section class="sync-status sync-warning">
             <strong>Cópia automática ainda não configurada</strong>
-            <p>As inscrições são salvas no banco principal. Configure as credenciais do Google Sheets no serviço publicado para ativar a cópia e sincronizar os cadastros pendentes.</p>
+            <p>Os cadastros são salvos no banco principal. Configure o Google Sheets no serviço publicado para ativar a cópia.</p>
         </section>
         {% endif %}
         <div class="table-wrap">
             <table>
-                <thead><tr><th>Nome</th><th>WhatsApp</th><th>E-mail</th><th>Perfil</th><th>Novidades</th><th>Planilha</th><th>Data (UTC)</th></tr></thead>
-                <tbody>
-                    {% for registration in registrations %}
+                <thead>
                     <tr>
-                        <td>{{ registration.name }}</td>
-                        <td>{{ registration.whatsapp }}</td>
-                        <td>{{ registration.email or "—" }}</td>
-                        <td>{{ profiles[registration.profile]["title"] }}</td>
-                        <td>{{ "Sim" if registration.marketing_consent else "Não" }}</td>
-                        <td>{{ "Sincronizada" if registration.sheet_sync and registration.sheet_sync.synced_at else "Pendente" }}</td>
-                        <td>{{ registration.created_at.strftime("%d/%m/%Y %H:%M") }}</td>
+                        <th>Primeiro nome</th>
+                        <th>WhatsApp</th>
+                        <th>Bairro/cidade</th>
+                        <th>SulaLover</th>
+                        <th>Frequência</th>
+                        <th>Ocasião</th>
+                        <th>Produto de interesse</th>
+                        <th>Experiência</th>
+                        <th>Assunto de interesse</th>
+                        <th>Novidades no WhatsApp</th>
+                        <th>Histórico</th>
+                        <th>Último cadastro (UTC)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in lead_rows %}
+                    <tr>
+                        <td>{{ row.lead.name }}</td>
+                        <td>{{ row.lead.whatsapp_normalized }}</td>
+                        <td>{{ row.lead.neighborhood }}</td>
+                        <td>
+                            {% if row.latest %}{{ profiles[row.latest.profile]["title"] }}{% else %}—{% endif %}
+                            {% if row.latest %}
+                            <details>
+                                <summary>Ver histórico ({{ row.history_count }})</summary>
+                                {% for entry in row.history %}
+                                <section class="history-entry">
+                                    <h2>Cadastro #{{ entry.registration.id }} · {{ profiles[entry.registration.profile]["title"] }}</h2>
+                                    <p class="history-date">{{ entry.registration.created_at.strftime("%d/%m/%Y %H:%M") }} UTC</p>
+                                    <dl class="answer-details">
+                                        {% for answer in entry.answers.values() %}
+                                        <dt>{{ answer.question }}</dt>
+                                        <dd>{{ answer.answer }}</dd>
+                                        {% endfor %}
+                                    </dl>
+                                    <p class="score-details">
+                                        {% for profile_id, score in entry.scores.items() %}
+                                        {{ profiles[profile_id]["title"] }}: {{ score }}{% if not loop.last %} · {% endif %}
+                                        {% endfor %}
+                                    </p>
+                                </section>
+                                {% endfor %}
+                                {% if not row.history %}
+                                <p class="history-date">Não há respostas associadas a este contato.</p>
+                                {% endif %}
+                            </details>
+                            {% endif %}
+                        </td>
+                        <td>{{ row.preference_labels.frequency or "—" }}</td>
+                        <td>{{ row.preference_labels.occasion or "—" }}</td>
+                        <td>{{ row.preference_labels.product or "—" }}</td>
+                        <td>{{ row.preference_labels.experience or "—" }}</td>
+                        <td>{{ row.preference_labels.news or "—" }}</td>
+                        <td>{{ "Sim" if row.lead.marketing_consent else "Não" }}</td>
+                        <td>
+                            {{ row.history_count }} resposta(s)
+                            <details>
+                                <summary>Autorizações</summary>
+                                <ul class="consent-history">
+                                    {% for event in row.consent_events %}
+                                    <li>{{ "Aceitou" if event.consented else "Não aceitou" }} · {{ event.created_at.strftime("%d/%m/%Y %H:%M") }} · {{ event.text_version }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </details>
+                        </td>
+                        <td>{% if row.latest %}{{ row.latest.created_at.strftime("%d/%m/%Y %H:%M") }}{% else %}—{% endif %}</td>
                     </tr>
                     {% else %}
-                    <tr><td colspan="7" class="empty-state">Ainda não há inscrições.</td></tr>
+                    <tr><td colspan="12" class="empty-state">Ainda não há cadastros voluntários.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>

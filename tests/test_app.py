@@ -3,7 +3,7 @@ import unittest
 from unittest.mock import patch
 
 from app import create_app
-from models import Registration, SheetSyncJob, db
+from models import Lead, MarketingConsentEvent, Registration, SheetSyncJob, db
 from quiz import QUESTIONS
 from sheets import SheetSyncError
 
@@ -30,25 +30,112 @@ class SulamitaAppTests(unittest.TestCase):
         return {
             "name": "Ana",
             "whatsapp": "11999999999",
-            "email": "",
-            "consent": True,
+            "neighborhood": "São Francisco, Niterói",
+            "data_consent": True,
             "marketing_consent": False,
+            "submission_key": "11111111-1111-4111-8111-111111111111",
             "answers": {
                 question["id"]: question["options"][0]["id"] for question in QUESTIONS
             },
         }
 
-    def test_submission_persists_registration_and_returns_profile(self):
+    def test_profile_is_not_available_before_required_registration_submission(self):
+        response = self.client.post(
+            "/api/result",
+            json={"answers": self.valid_payload()["answers"]},
+        )
+
+        self.assertEqual(response.status_code, 404)
+        with self.app.app_context():
+            self.assertEqual(Registration.query.count(), 0)
+            self.assertEqual(Lead.query.count(), 0)
+
+    def test_submission_saves_lead_preferences_and_consent_history(self):
         response = self.client.post("/api/submit", json=self.valid_payload())
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.json["success"])
         with self.app.app_context():
             registration = Registration.query.one()
+            lead = Lead.query.one()
+            consent_event = MarketingConsentEvent.query.one()
             self.assertEqual(registration.name, "Ana")
+            self.assertEqual(registration.whatsapp_normalized, "+5511999999999")
+            self.assertEqual(registration.neighborhood, "São Francisco, Niterói")
+            self.assertEqual(registration.frequency, "weekly")
+            self.assertEqual(registration.product_interest, "quiches")
+            self.assertEqual(registration.profile, "raiz")
+            self.assertEqual(registration.campaign_source, "Evento Linha Fit — São Francisco — 31/10/2026")
+            self.assertIn("Toda semana", registration.answer_snapshot_json)
             self.assertFalse(registration.marketing_consent)
-            self.assertEqual(registration.profile, "pratica")
+            self.assertIsNone(registration.marketing_consent_at)
+            self.assertIsNone(registration.marketing_consent_version)
+            self.assertIsNotNone(registration.marketing_consent_decided_at)
+            self.assertIsNotNone(registration.marketing_consent_text_version)
+            self.assertEqual(lead.whatsapp_normalized, "+5511999999999")
+            self.assertFalse(lead.marketing_consent)
+            self.assertFalse(consent_event.consented)
+            self.assertIsNotNone(registration.privacy_notice_accepted_at)
+            self.assertIsNotNone(registration.privacy_notice_version)
             self.assertEqual(SheetSyncJob.query.one().registration_id, registration.id)
+
+    def test_repeat_contact_reuses_lead_and_preserves_response_and_consent_history(self):
+        first_payload = self.valid_payload()
+        self.assertEqual(self.client.post("/api/submit", json=first_payload).status_code, 200)
+
+        second_payload = self.valid_payload()
+        second_payload.update(
+            {
+                "name": "Ana Clara",
+                "whatsapp": "+55 (11) 99999-9999",
+                "neighborhood": "Icaraí, Niterói",
+                "marketing_consent": True,
+                "submission_key": "22222222-2222-4222-8222-222222222222",
+            }
+        )
+        second_payload["answers"]["product"] = "sweets"
+        response = self.client.post("/api/submit", json=second_payload)
+
+        self.assertEqual(response.status_code, 200)
+        with self.app.app_context():
+            self.assertEqual(Lead.query.count(), 1)
+            self.assertEqual(Registration.query.count(), 2)
+            self.assertEqual(MarketingConsentEvent.query.count(), 2)
+            lead = Lead.query.one()
+            self.assertEqual(lead.name, "Ana")
+            self.assertEqual(lead.neighborhood, "Icaraí, Niterói")
+            self.assertTrue(lead.marketing_consent)
+            self.assertEqual(
+                [event.consented for event in sorted(lead.consent_events, key=lambda event: event.id)],
+                [False, True],
+            )
+            accepted_registration = max(lead.registrations, key=lambda item: item.id)
+            declined_registration = min(lead.registrations, key=lambda item: item.id)
+            self.assertIsNotNone(accepted_registration.marketing_consent_at)
+            self.assertIsNone(declined_registration.marketing_consent_at)
+            products = {registration.product_interest for registration in lead.registrations}
+            self.assertEqual(products, {"quiches", "sweets"})
+
+        credentials = base64.b64encode(b"test-admin:test-password").decode()
+        history_response = self.client.get(
+            "/admin",
+            headers={"Authorization": f"Basic {credentials}"},
+        )
+        history_html = history_response.get_data(as_text=True)
+        self.assertIn("Cadastro #1", history_html)
+        self.assertIn("Cadastro #2", history_html)
+
+    def test_retry_with_same_submission_key_does_not_duplicate_registration(self):
+        payload = self.valid_payload()
+        first = self.client.post("/api/submit", json=payload)
+        retry = self.client.post("/api/submit", json=payload)
+
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(retry.status_code, 200)
+        with self.app.app_context():
+            self.assertEqual(Lead.query.count(), 1)
+            self.assertEqual(Registration.query.count(), 1)
+            self.assertEqual(MarketingConsentEvent.query.count(), 1)
 
     def test_submission_is_saved_when_sheet_sync_fails_and_admin_retries(self):
         self.app.config.update(
@@ -98,32 +185,48 @@ class SulamitaAppTests(unittest.TestCase):
             self.assertEqual(Registration.query.count(), 1)
             self.assertIsNone(SheetSyncJob.query.one().synced_at)
 
-    def test_submission_requires_consent_and_every_answer(self):
+    def test_submission_validates_phone_consent_and_all_answers(self):
         payload = self.valid_payload()
-        payload["consent"] = False
-        self.assertEqual(self.client.post("/api/submit", json=payload).status_code, 400)
+        payload["whatsapp"] = "12345"
+        response = self.client.post("/api/submit", json=payload)
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json["field"], "whatsapp")
+
+        payload = self.valid_payload()
+        payload["data_consent"] = False
+        response = self.client.post("/api/submit", json=payload)
+        self.assertEqual(response.status_code, 400)
 
         payload = self.valid_payload()
         payload["answers"].pop(QUESTIONS[0]["id"])
         self.assertEqual(self.client.post("/api/submit", json=payload).status_code, 400)
+        with self.app.app_context():
+            self.assertEqual(Registration.query.count(), 0)
+            self.assertEqual(Lead.query.count(), 0)
 
-        payload = self.valid_payload()
-        payload["answers"][QUESTIONS[0]["id"]] = []
-        self.assertEqual(self.client.post("/api/submit", json=payload).status_code, 400)
-
-    def test_admin_and_csv_require_authentication(self):
+    def test_admin_and_csv_require_authentication_and_export_lead_data(self):
         self.assertEqual(self.client.get("/admin").status_code, 401)
+        self.client.post("/api/submit", json=self.valid_payload())
 
         credentials = base64.b64encode(b"test-admin:test-password").decode()
-        response = self.client.get(
-            "/admin/export.csv",
-            headers={"Authorization": f"Basic {credentials}"},
-        )
-        self.assertEqual(response.status_code, 200)
-        self.assertIn("text/csv", response.content_type)
+        headers = {"Authorization": f"Basic {credentials}"}
+        admin_response = self.client.get("/admin", headers=headers)
+        self.assertEqual(admin_response.status_code, 200)
+        self.assertIn("São Francisco, Niterói", admin_response.get_data(as_text=True))
 
-    def test_landing_page_renders(self):
+        response = self.client.get("/admin/export.csv", headers=headers)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Bairro/cidade", response.get_data(as_text=True))
+        self.assertIn("ID do cadastro", response.get_data(as_text=True))
+        self.assertIn("Ana,1,", response.get_data(as_text=True))
+        self.assertIn("Respostas (IDs e textos)", response.get_data(as_text=True))
+        self.assertIn("São Francisco, Niterói", response.get_data(as_text=True))
+
+    def test_landing_and_privacy_pages_render(self):
         response = self.client.get("/")
-
         self.assertEqual(response.status_code, 200)
-        self.assertIn("Linha Fit", response.get_data(as_text=True))
+        page = response.get_data(as_text=True)
+        self.assertIn("Qual SulaLover é você?", page)
+        self.assertIn("preencha seus dados e responda às cinco perguntas", page)
+        self.assertNotIn("cadastro é opcional", page)
+        self.assertEqual(self.client.get("/privacidade").status_code, 200)

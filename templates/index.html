@@ -4,11 +4,11 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#f6eedf">
-    <meta name="description" content="Descubra qual momento da Linha Fit da Sulamita combina com você.">
-    <title>Linha Fit | Sulamita Bistrô</title>
+    <meta name="description" content="Descubra qual SulaLover você é e conheça a Linha Fit da Sulamita.">
+    <title>Qual SulaLover é você? | Sulamita Bistrô</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
@@ -23,58 +23,72 @@
     <main class="page-shell">
         <section id="welcome-screen" class="screen welcome-screen">
             <div class="hero-copy">
-                <p class="eyebrow"><span></span> 31/10 · são francisco</p>
-                <h1>Um novo jeito<br>de saborear o <em>leve.</em></h1>
-                <p class="intro">Vem aí a Linha Fit da Sulamita: nossas empadas e quiches em novas versões para acompanhar sua rotina. Responda e descubra qual combina com você.</p>
-                <div class="hero-details">
-                    <span class="detail-icon" aria-hidden="true">✳</span>
-                    <span>É mais que empada. É Sulamita — com um toque leve e muito sabor.</span>
-                </div>
+                <p class="eyebrow"><span></span> 31/10/2026 · são francisco</p>
+                <h1>Qual <em>SulaLover</em><br>é você?</h1>
+                <p class="intro">Tem Sulamita na rotina, no pedido que chega em casa, na pausa depois da caminhada e na mesa cheia de gente querida!</p>
+                <p class="intro">Cinco perguntinhas pra descobrir seu jeitinho de amar a Sulamita.</p>
             </div>
 
+            <div class="welcome-card">
+                <div class="panel-topline"><span>01</span><span>um quiz cheio de carinho</span></div>
+                <p>Para participar do sorteio, preencha seus dados e responda às cinco perguntas. Seu cadastro e suas respostas serão enviados juntos ao final.</p>
+                <button id="open-signup" class="button button-primary" type="button">Começar minha participação <span aria-hidden="true">→</span></button>
+            </div>
+        </section>
+
+        <section id="signup-screen" class="screen signup-screen" hidden>
+            <div class="signup-intro">
+                <p class="eyebrow"><span></span> lançamento linha fit · 31/10/2026</p>
+                <h1>Vamos começar<br>pelo seu <em>cadastro</em></h1>
+                <p>Preencha seus dados e responda ao quiz para confirmar sua participação nos sorteios de brindes do evento.</p>
+            </div>
             <div class="form-panel">
-                <div class="panel-topline"><span>01</span><span>descubra seu sabor</span></div>
-                <form id="customer-form">
-                    <label for="name">Seu nome</label>
-                    <input id="name" name="name" type="text" autocomplete="name" maxlength="100" placeholder="Como podemos te chamar?" required>
+                <div class="panel-topline"><span>02</span><span>seus dados</span></div>
+                <form id="customer-form" novalidate>
+                    <label for="name">Seu primeiro nome</label>
+                    <input id="name" name="name" type="text" autocomplete="given-name" maxlength="100" placeholder="Como podemos te chamar?" required aria-describedby="name-error">
+                    <p id="name-error" class="field-error" role="alert"></p>
 
-                    <label for="whatsapp">WhatsApp</label>
-                    <input id="whatsapp" name="whatsapp" type="tel" autocomplete="tel" maxlength="30" placeholder="(00) 00000-0000" required>
+                    <label for="whatsapp">WhatsApp com DDD</label>
+                    <input id="whatsapp" name="whatsapp" type="tel" inputmode="tel" autocomplete="tel" maxlength="30" placeholder="(00) 00000-0000" required aria-describedby="whatsapp-error">
+                    <p id="whatsapp-error" class="field-error" role="alert"></p>
 
-                    <label for="email">E-mail <span class="optional">opcional</span></label>
-                    <input id="email" name="email" type="email" autocomplete="email" maxlength="254" placeholder="voce@email.com">
+                    <label for="neighborhood">Bairro e cidade</label>
+                    <input id="neighborhood" name="neighborhood" type="text" autocomplete="address-level2" maxlength="160" placeholder="Ex.: São Francisco, Niterói" required aria-describedby="neighborhood-error">
+                    <p id="neighborhood-error" class="field-error" role="alert"></p>
 
-                    <label class="check-row">
-                        <input id="consent" name="consent" type="checkbox" required>
-                        <span>Concordo que a Sulamita use meus dados para registrar minha participação e apresentar meu resultado.</span>
+                    <label class="check-row data-consent-row">
+                        <input id="data-consent" name="data_consent" type="checkbox" required aria-describedby="data-consent-error">
+                        <span>Autorizo o uso dos meus dados para registrar meu cadastro e participação no sorteio, conforme o <a href="/privacidade" target="_blank" rel="noopener noreferrer">Aviso de Privacidade</a>.</span>
                     </label>
+                    <p id="data-consent-error" class="field-error" role="alert"></p>
+
                     <label class="check-row marketing-row">
                         <input id="marketing-consent" name="marketing_consent" type="checkbox">
-                        <span>Quero receber novidades e informações sobre a Linha Fit pelo WhatsApp ou e-mail. <span class="optional">opcional</span></span>
+                        <span>Quero receber novidades e ofertas da Sulamita e parceiros pelo WhatsApp. <span class="optional">opcional</span></span>
                     </label>
-                    <p class="privacy-note">Seus dados serão usados pela Sulamita para esta ação. Você pode pedir a remoção a qualquer momento.</p>
-                    <button class="button button-primary" type="submit">Descobrir meu momento <span aria-hidden="true">→</span></button>
-                    <p id="form-error" class="form-error" role="alert" aria-live="polite"></p>
+                    <p class="privacy-note">Você pode deixar de receber nossas mensagens quando quiser. 🤎</p>
+                    <button id="start-quiz" class="button button-primary" type="submit">Continuar para o quiz <span aria-hidden="true">→</span></button>
+                    <p id="form-error" class="form-error" role="alert" aria-live="polite" tabindex="-1"></p>
                 </form>
             </div>
-            <div class="fit-burst" aria-hidden="true"><span>LINHA<br>FIT</span></div>
         </section>
 
         <section id="quiz-screen" class="screen quiz-screen" hidden>
             <div class="quiz-card">
                 <div class="quiz-heading">
-                    <p class="eyebrow"><span></span> lançamento linha fit</p>
-                    <p class="question-counter"><span id="current-question">1</span><span class="counter-divider">/</span><span id="total-questions">4</span></p>
+                    <p class="eyebrow"><span></span> qual sulalover é você?</p>
+                    <p class="question-counter"><span id="current-question">1</span><span class="counter-divider"> / </span><span id="total-questions">5</span></p>
                 </div>
                 <div class="progress-track"><div id="progress-fill"></div></div>
                 <p class="question-kicker">um pouquinho sobre você</p>
-                <h2 id="question-text"></h2>
+                <h2 id="question-text" aria-live="polite" aria-atomic="true" tabindex="-1"></h2>
                 <div id="options-container" class="options-container"></div>
                 <div class="quiz-navigation">
                     <button id="prev-btn" class="button button-quiet" type="button">← Voltar</button>
                     <button id="next-btn" class="button button-primary" type="button" disabled>Continuar <span aria-hidden="true">→</span></button>
                 </div>
-                <p id="quiz-error" class="form-error" role="alert" aria-live="polite"></p>
+                <p id="quiz-error" class="form-error" role="alert" aria-live="polite" tabindex="-1"></p>
             </div>
             <div class="quiz-aside">
                 <span class="aside-flower" aria-hidden="true">✳</span>
@@ -86,11 +100,11 @@
 
         <section id="result-screen" class="screen result-screen" hidden>
             <div class="result-card">
-                <p class="eyebrow"><span></span> esse é o seu momento</p>
-                <div class="result-symbol" aria-hidden="true">✳</div>
-                <h2 id="result-title"></h2>
+                <p class="eyebrow"><span></span> resultado do quiz</p>
+                <img id="result-icon" class="result-icon" alt="" aria-hidden="true">
+                <p class="result-kicker">Seu jeitinho é…</p>
+                <h2 id="result-title" tabindex="-1"></h2>
                 <p id="result-description" class="result-description"></p>
-                <p id="result-accent" class="result-accent"></p>
                 <div class="result-footer">
                     <span>feito com carinho</span>
                     <span class="result-rule"></span>
@@ -98,13 +112,13 @@
                 </div>
             </div>
             <div class="result-actions">
-                <p>Obrigada por fazer parte desse começo.<br>A gente se encontra na próxima pausa.</p>
+                <p class="participation-confirmation">Cadastro concluído! Você respondeu ao quiz e já está participando dos sorteios de brindes do evento. 🤎</p>
                 <a class="button button-primary" href="https://www.instagram.com/sulamitabistro/" target="_blank" rel="noopener noreferrer">Acompanhar a Sulamita <span aria-hidden="true">↗</span></a>
             </div>
         </section>
     </main>
     <footer class="site-footer">
-        <span>com afeto, Sulamita Bistrô</span>
+        <span>O principal ingrediente é o amor.</span>
         <span>LANÇAMENTO LINHA FIT</span>
     </footer>
     <script src="{{ url_for('static', filename='js/app.js') }}" defer></script>

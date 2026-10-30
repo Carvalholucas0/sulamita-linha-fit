@@ -1,6 +1,6 @@
-# Sulamita Bistrô — lançamento Linha Fit
+# Sulamita Bistrô — Linha Fit
 
-Aplicação independente de captação de participantes para o lançamento da Linha Fit. A experiência combina um quiz curto de preferências com cadastro, resultado personalizado e exportação protegida dos leads em CSV.
+Quiz mobile-first para o evento de lançamento da Linha Fit, com resultado “Qual SulaLover é você?”, cadastro obrigatório para participação nos sorteios, área administrativa protegida, exportação CSV e cópia opcional para Google Sheets.
 
 ## Executar localmente
 
@@ -9,43 +9,38 @@ py -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 Copy-Item .env.example .env
-```
-
-Edite o `.env` com os dados do banco e uma senha administrativa. Para desenvolvimento, é possível remover `DATABASE_URL`; a aplicação então cria `instance/sulamita.db`. Não use o SQLite local como banco de produção em hospedagens com disco efêmero.
-
-```powershell
 flask --app app run
 ```
 
-Abra `http://127.0.0.1:5000`. O painel e o CSV ficam em `/admin` e exigem autenticação HTTP Basic com `ADMIN_USER` e `ADMIN_PASSWORD`.
+Sem `DATABASE_URL`, o desenvolvimento local usa SQLite em `instance/sulamita.db`. Não use SQLite como banco de produção em uma hospedagem com disco efêmero.
 
-## Banco persistente e publicação
+## Fluxo e dados
 
-O app aceita PostgreSQL por `DATABASE_URL` e usa `pool_pre_ping` para renovar conexões após períodos ociosos. O Neon é o banco principal; suspender o compute não remove os registros.
+1. Antes do quiz, a pessoa informa primeiro nome, WhatsApp com DDD e bairro/cidade, e aceita o aviso de privacidade.
+2. A participação nos sorteios exige responder às cinco perguntas e concluir o envio. A autorização para receber ofertas pelo WhatsApp é separada, opcional e começa desmarcada.
+3. Após a última pergunta, o cadastro, as cinco respostas e o perfil são enviados juntos e salvos no banco. O banco mantém uma ficha única por WhatsApp normalizado e cada novo envio gera um registro histórico separado de respostas e autorização.
+4. Uma chave de envio idempotente permite tentar novamente após falhas de conexão sem criar um segundo registro para a mesma tentativa.
 
-1. Crie um banco PostgreSQL no Neon e copie a connection string com SSL.
-2. Publique este diretório no Render usando o `render.yaml`; configure `DATABASE_URL`, `ADMIN_USER`, `ADMIN_PASSWORD`, `SHEETS_SERVICE_ACCOUNT_JSON` e `SHEETS_SPREADSHEET_ID` como variáveis privadas. O blueprint gera `SECRET_KEY`.
-3. O blueprint instala os requisitos e inicia o app com `gunicorn app:app`.
-4. Abra `/admin` e teste o download do CSV e a sincronização com a planilha antes do evento.
+O banco armazena respostas com IDs e textos apresentados, pontuação dos cinco perfis, preferências declaradas separadamente do resultado, origem e versão da campanha, data/hora e versões dos avisos. O formulário não pergunta sobre dados de saúde nem infere preferência por doces a partir do perfil; somente a resposta explícita sobre produto é considerada interesse em doces.
 
-As tabelas são criadas na inicialização sem apagar dados existentes; inscrições antigas sem tarefa de cópia são adicionadas à fila automaticamente.
+## Banco e publicação
 
-## Cópia automática para Google Sheets
+O Neon é o banco principal e o Render hospeda o aplicativo. Configure a connection string PostgreSQL do Neon em `DATABASE_URL` como variável privada no Render. O SQLite local não deve ser usado em produção.
 
-A inscrição e sua tarefa persistente de sincronização são gravadas primeiro no Neon; o resultado do quiz pode ser exibido sem aguardar o Google Sheets. Em seguida, um worker tenta escrever a resposta em uma linha fixa da planilha, identificada pelo ID da inscrição; novas tentativas atualizam a mesma linha em vez de duplicá-la. Se o Sheets estiver fora do ar ou o Render reiniciar antes de terminar, a resposta permanece no banco e a tarefa fica pendente. O app tenta sincronizar após novas inscrições e quando alguém autorizado abre `/admin`; erros e pendências aparecem nesse painel. As chamadas ao Google têm timeout e usam valores brutos para que texto fornecido por participantes não seja interpretado como fórmula.
+Ao iniciar, o aplicativo cria as tabelas novas e executa uma migração aditiva das inscrições existentes, preservando respostas e autorizações já registradas. Inscrições antigas são associadas a um contato normalizado quando o telefone é válido; os dados originais permanecem na tabela de histórico. Não execute mudanças de banco manualmente para esta versão.
 
-1. Crie uma planilha privada chamada, por exemplo, `Sulamita — Linha Fit`, com uma aba chamada `Respostas`. Deixe a primeira linha vazia; o app cria os cabeçalhos.
-2. No Google Cloud, habilite Google Sheets API, crie uma service account e gere sua chave JSON.
-3. Compartilhe a planilha com o `client_email` da service account como **Editor**. Não habilite o compartilhamento público.
-4. Em Render, configure `SHEETS_SERVICE_ACCOUNT_JSON` com o conteúdo integral do JSON e `SHEETS_SPREADSHEET_ID` com o trecho entre `/d/` e `/edit` na URL da planilha. Trate o JSON como uma senha: mantenha-o apenas nas variáveis privadas do Render, nunca no Git ou no front-end.
-5. Publique/reinicie o serviço e envie um cadastro de teste. Confirme a linha na planilha, depois abra `/admin` para verificar o estado e exporte o CSV.
+## Painel e exportação
 
-A planilha é uma cópia operacional, não substitui o Neon nem backups independentes. Mantenha o CSV exportado em local privado e restrinja o acesso às respostas, que contêm dados pessoais. Sem as variáveis do Sheets configuradas, o app ainda salva as inscrições no Neon e avisa no painel que o espelhamento não foi ativado.
+O painel `/admin` exige autenticação HTTP Basic usando `ADMIN_USER` e `ADMIN_PASSWORD`. Ele mostra até 200 contatos únicos, o resultado e as preferências mais recentes, além do histórico de respostas e autorizações. O CSV inclui o histórico completo; guarde-o em local privado, pois contém dados pessoais.
 
-## Privacidade
+## Google Sheets opcional
 
-O cadastro pede nome, WhatsApp e, opcionalmente, e-mail. O consentimento para registrar a participação é obrigatório; o aceite de comunicações promocionais é separado e opcional. A planilha contém dados pessoais e deve ser acessada e compartilhada somente por pessoas autorizadas. Adapte o aviso de privacidade ao controlador e aos canais usados pela Sulamita antes da publicação.
+A inscrição é salva primeiro no Neon. Se configurado, o app copia o histórico para uma planilha privada usando linhas estáveis por ID; falhas de cópia não impedem o cadastro. Defina `SHEETS_SERVICE_ACCOUNT_JSON` e `SHEETS_SPREADSHEET_ID` no Render para ativar a integração.
 
-## Identidade visual
+Esta versão usa 22 colunas no cabeçalho da aba `Respostas`. Se a planilha já tiver um cabeçalho da versão anterior, faça uma cópia privada de segurança e atualize a primeira linha para corresponder aos novos cabeçalhos antes de ativar a sincronização. Sem as variáveis do Sheets, as respostas continuam no Neon.
 
-O quiz foi alinhado ao perfil público da Sulamita: marrom queimado, tons de massa e creme, amarelo vivo da Linha Fit, selo com o nome em duas linhas e a assinatura “É mais que empada, é Sulamita”. O destaque de 31/10 em São Francisco também aparece no início. A marca do cabeçalho é uma aproximação tipográfica; substitua pelo arquivo oficial do logo quando ele estiver disponível. As perguntas e perfis ficam em `quiz.py`.
+## Privacidade e identidade visual
+
+O caminho `/privacidade` mostra um aviso inicial baseado no fluxo e nos dados coletados. Antes de publicar esta versão e divulgar o QR Code, a Sulamita deve validar o texto, completar a identificação legal da empresa, confirmar prazos de retenção e publicar as regras oficiais do sorteio.
+
+A interface usa Montserrat e declara Lovelo como fonte de títulos. O arquivo oficial da fonte Lovelo ainda precisa ser fornecido para que ela apareça em dispositivos sem essa fonte instalada. As ilustrações fornecidas foram copiadas para `static/img/` e associadas aos perfis.
