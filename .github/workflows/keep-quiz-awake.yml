@@ -1,0 +1,35 @@
+name: Keep Sulamita quiz awake for event
+
+on:
+  schedule:
+    # GitHub cron uses UTC; Sao Paulo is UTC-3.
+    - cron: "55 10 15 11 *"
+    - cron: "*/5 11-15 15 11 *"
+    - cron: "0 16 15 11 *"
+
+permissions:
+  contents: read
+
+jobs:
+  keep-quiz-awake:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ping the quiz during the event window
+        shell: bash
+        run: |
+          if [[ "$(date -u +%F)" != "2026-11-15" ]]; then
+            echo "Outside the 2026 event date; skipping the ping."
+            exit 0
+          fi
+
+          curl \
+            --fail \
+            --silent \
+            --show-error \
+            --retry 4 \
+            --retry-connrefused \
+            --retry-delay 10 \
+            --max-time 30 \
+            "https://sulamita-linha-fit.onrender.com/api/questions" \
+            > /dev/null

@@ -39,6 +39,10 @@ A inscrição é salva primeiro no Neon. Se configurado, o app copia o históric
 
 Esta versão usa 23 colunas no cabeçalho da aba `Respostas`. Se a planilha já tiver um cabeçalho da versão anterior, faça uma cópia privada de segurança e atualize a primeira linha para corresponder aos novos cabeçalhos antes de ativar a sincronização. Sem as variáveis do Sheets, as respostas continuam no Neon.
 
+## Disponibilidade durante o evento
+
+O workflow `.github/workflows/keep-quiz-awake.yml` envia uma requisição GET ao endpoint de perguntas a cada cinco minutos em 15/11/2026, das 08h às 13h (America/Sao_Paulo), com um ping preventivo às 07h55. O cron do GitHub usa UTC e a data é verificada para que os pings não sejam enviados em anos posteriores. O agendamento é best-effort e não garante disponibilidade exata minuto a minuto.
+
 ## Privacidade e identidade visual
 
 O caminho `/privacidade` mostra um aviso inicial baseado no fluxo e nos dados coletados. Antes de publicar esta versão e divulgar o QR Code, a Sulamita deve validar o texto e completar a identificação legal da empresa e os prazos de retenção.
