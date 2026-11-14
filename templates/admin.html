@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Leads | Sulamita Linha Fit</title>
+    <title>Leads | Sulamita Bistrô</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -13,7 +13,7 @@
     <main class="admin-shell">
         <header class="admin-header">
             <div>
-                <p class="eyebrow">SULAMITA BISTRÔ · LINHA FIT</p>
+                <p class="eyebrow">SULAMITA BISTRÔ</p>
                 <h1>Leads e SulaLovers</h1>
                 <p>Exibindo até 200 contatos únicos, com o resultado mais recente de cada um.</p>
             </div>
@@ -74,6 +74,7 @@
                                 <section class="history-entry">
                                     <h2>Cadastro #{{ entry.registration.id }} · {{ profiles[entry.registration.profile]["title"] }}</h2>
                                     <p class="history-date">{{ entry.registration.created_at.strftime("%d/%m/%Y %H:%M") }} UTC</p>
+                                    <p class="history-date"><strong>Brinde:</strong> {{ rewards.get(entry.registration.reward, "—") }}</p>
                                     <dl class="answer-details">
                                         {% for answer in entry.answers.values() %}
                                         <dt>{{ answer.question }}</dt>

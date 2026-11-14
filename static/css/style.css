@@ -147,6 +147,9 @@ h1 em { color: var(--terracotta); font-style: normal; }
 .result-kicker { margin-bottom: 9px; color: var(--muted); font-size: 13px; }
 .result-card h2 { margin-bottom: 15px; color: var(--brown-dark); font: 700 clamp(27px, 4vw, 36px)/1.2 var(--display); }
 .result-description { color: #505a48; font-size: 13px; line-height: 1.8; }
+.reward-box { margin-top: 23px; padding: 17px 19px; border: 1px solid #e6c9a8; border-radius: 14px; background: #fbf3e7; }
+.reward-label { margin-bottom: 7px; color: var(--brown); font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+.reward-message { margin: 0; color: var(--brown-dark); font-size: 13px; font-weight: 600; line-height: 1.7; }
 .result-footer { display: flex; align-items: center; justify-content: center; gap: 11px; margin-top: 25px; color: var(--brown); font-size: 8px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
 .result-rule { width: 26px; border-top: 1px solid var(--terracotta); }
 .result-actions { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 23px; }

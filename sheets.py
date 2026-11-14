@@ -30,6 +30,7 @@ HEADERS = [
     "Aceite do aviso de privacidade",
     "Versão do aviso de privacidade",
     "Data UTC",
+    "Brinde atribuído",
 ]
 
 
@@ -80,6 +81,7 @@ def registration_values(registration, profiles, questions):
         ),
         getattr(registration, "privacy_notice_version", None) or "",
         registration.created_at.isoformat(),
+        getattr(registration, "reward", None) or "",
     ]
 
 
@@ -99,9 +101,9 @@ def sync_registration(registration, profiles, questions, config):
         client.set_timeout((5, 15))
         worksheet = client.open_by_key(config["SHEETS_SPREADSHEET_ID"]).worksheet("Respostas")
 
-        existing_headers = worksheet.get("A1:V1")
+        existing_headers = worksheet.get("A1:W1")
         if not existing_headers or not any(str(cell).strip() for cell in existing_headers[0]):
-            worksheet.update("A1:V1", [HEADERS], value_input_option="RAW")
+            worksheet.update("A1:W1", [HEADERS], value_input_option="RAW")
         elif existing_headers[0] != HEADERS:
             raise SheetSyncError(
                 'A primeira linha da aba "Respostas" deve conter os cabeçalhos esperados.'
@@ -111,7 +113,7 @@ def sync_registration(registration, profiles, questions, config):
         if worksheet.row_count < target_row:
             worksheet.add_rows(target_row - worksheet.row_count)
         worksheet.update(
-            f"A{target_row}:V{target_row}",
+            f"A{target_row}:W{target_row}",
             [registration_values(registration, profiles, questions)],
             value_input_option="RAW",
         )

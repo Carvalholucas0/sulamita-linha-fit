@@ -24,6 +24,7 @@ from quiz import (
     PRIVACY_NOTICE_VERSION,
     PROFILES,
     QUIZ_VERSION,
+    REWARDS,
     build_answer_snapshot,
     build_declared_preferences,
     build_score_snapshot,
@@ -130,6 +131,7 @@ def create_app(test_config=None):
         response = jsonify(
             success=True,
             profile={"id": registration.profile, **PROFILES[registration.profile]},
+            reward=REWARDS.get(registration.reward),
             sheet_backup=(
                 "synced" if registration.id in synced_ids else
                 "pending" if is_configured(app.config) else
@@ -226,6 +228,7 @@ def create_app(test_config=None):
             return registration_response(existing_registration)
 
         profile_id = calculate_profile(answers)
+        reward_id = secrets.choice(tuple(REWARDS))
         now = datetime.now(timezone.utc)
 
         def save_registration(lead=None):
@@ -288,6 +291,7 @@ def create_app(test_config=None):
                 quiz_version=QUIZ_VERSION,
                 submission_key=submission_key,
                 profile=profile_id,
+                reward=reward_id,
                 created_at=now,
             )
             db.session.add(registration)
@@ -318,7 +322,7 @@ def create_app(test_config=None):
                 whatsapp_normalized=normalized_whatsapp
             ).one_or_none()
             if existing_lead is None:
-                app.logger.exception("Falha de integridade ao salvar lead da Linha Fit.")
+                app.logger.exception("Falha de integridade ao salvar cadastro do quiz.")
                 return jsonify(
                     error="Não foi possível salvar seu cadastro. Tente novamente."
                 ), 500
@@ -326,13 +330,13 @@ def create_app(test_config=None):
                 registration = save_registration(existing_lead)
             except SQLAlchemyError:
                 db.session.rollback()
-                app.logger.exception("Falha ao salvar cadastro repetido da Linha Fit.")
+                app.logger.exception("Falha ao salvar cadastro repetido do quiz.")
                 return jsonify(
                     error="Não foi possível salvar seu cadastro. Tente novamente."
                 ), 500
         except SQLAlchemyError:
             db.session.rollback()
-            app.logger.exception("Falha ao salvar cadastro da Linha Fit.")
+            app.logger.exception("Falha ao salvar cadastro do quiz.")
             return jsonify(
                 error="Não foi possível salvar seu cadastro. Tente novamente."
             ), 500
@@ -401,6 +405,7 @@ def create_app(test_config=None):
             "admin.html",
             lead_rows=lead_rows,
             profiles=ALL_PROFILES,
+            rewards=REWARDS,
             sheet_sync_configured=is_configured(app.config),
             pending_jobs=pending_jobs,
             pending_count=pending_count,
@@ -519,6 +524,7 @@ def create_app(test_config=None):
                     safe_text(registration.whatsapp),
                     safe_text(registration.neighborhood),
                     profile_titles.get(registration.profile, registration.profile),
+                    REWARDS.get(registration.reward, "—"),
                     *response_values,
                     "Sim" if registration.marketing_consent else "Não",
                     utc_datetime(registration.marketing_consent_decided_at),
@@ -532,6 +538,7 @@ def create_app(test_config=None):
                 "WhatsApp",
                 "Bairro / cidade",
                 "Perfil",
+                "Brinde atribuído",
                 *[question["text"] for question in QUESTIONS],
                 "Aceita novidades no WhatsApp?",
                 "Data da decisão sobre mensagens (UTC)",
@@ -580,7 +587,7 @@ def create_app(test_config=None):
             output,
             mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             as_attachment=True,
-            download_name="sulamita-linha-fit-relatorio.xlsx",
+            download_name="sulamita-quiz-relatorio.xlsx",
             max_age=0,
         )
 

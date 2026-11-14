@@ -80,6 +80,7 @@ class LegacyDatabaseMigrationTests(unittest.TestCase):
             events = sorted(lead.consent_events, key=lambda event: event.id)
             self.assertEqual(registration.lead_id, lead.id)
             self.assertEqual(registration.whatsapp_normalized, "+5511999999999")
+            self.assertIsNone(registration.reward)
             self.assertIn("Entre um compromisso e outro", registration.answer_snapshot_json)
             self.assertIsNone(registration.privacy_notice_accepted_at)
             self.assertIsNone(declined.privacy_notice_accepted_at)

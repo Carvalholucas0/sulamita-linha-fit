@@ -1,7 +1,18 @@
-QUIZ_VERSION = "sulalover-2026-10-29-v2"
-CAMPAIGN_SOURCE = "Evento Linha Fit — São Francisco — 31/10/2026"
+QUIZ_VERSION = "sulalover-standard-v1"
+CAMPAIGN_SOURCE = "Quiz SulaLover"
 MARKETING_CONSENT_VERSION = "whatsapp-ofertas-v1"
-PRIVACY_NOTICE_VERSION = "privacy-notice-2026-10-29-v1"
+PRIVACY_NOTICE_VERSION = "privacy-notice-standard-v1"
+
+REWARDS = {
+    "mate": (
+        "Na compra de um combo Sulamita, você ganha um mate da casa. "
+        "Tire um print desta tela e leve até uma de nossas lojas."
+    ),
+    "classica": (
+        "Na compra de um combo Sulamita, você ganha mais uma clássica. "
+        "Tire um print desta tela e leve até uma de nossas lojas."
+    ),
+}
 
 QUESTIONS = [
     {
@@ -29,7 +40,7 @@ QUESTIONS = [
         "text": "Na vitrine, seu olho vai primeiro para?",
         "options": [
             {"id": "quiches", "text": "Vou nas quiches gratinadas, tem sabor que conquista de primeira!", "profile": "raiz"},
-            {"id": "fit_line", "text": "As opções da linha fit. Quero conhecer os sabores!", "profile": "no_pique"},
+            {"id": "fit_line", "text": "Uma opção leve para a minha rotina.", "profile": "no_pique"},
             {"id": "sweets", "text": "Sou Team docinho! Já posso escolher a sobremesa?", "profile": "formiguinha"},
             {"id": "empadao", "text": "Um empadão pra compartilhar!", "profile": "mesa_cheia"},
         ],
@@ -49,7 +60,7 @@ QUESTIONS = [
         "text": "Que notícia da Sulamita você ia adorar receber?",
         "options": [
             {"id": "home_orders", "text": "Novidades e facilidades pra pedir de casa.", "profile": "nutella"},
-            {"id": "fit_news", "text": "Tudo que chegar de novo na linha fit.", "profile": "no_pique"},
+            {"id": "fit_news", "text": "Novidades sobre opções leves e equilibradas.", "profile": "no_pique"},
             {"id": "new_flavors", "text": "Os sabores que acabaram de chegar.", "profile": "formiguinha"},
             {"id": "surprise", "text": "Um pouquinho de tudo. Pode me surpreender!", "profile": None},
         ],
@@ -69,7 +80,7 @@ PROFILES = {
     },
     "no_pique": {
         "title": "SulaLover No Pique ☀️",
-        "description": "Depois da corrida, da caminhada ou entre os compromissos, você gosta de descobrir sabores que combinem com a sua rotina. A linha fit chega pra entrar nesses encontros: você traz seu pique e a gente prepara sua próxima pausa.",
+        "description": "Depois da corrida, da caminhada ou entre os compromissos, você gosta de descobrir sabores que combinam com a sua rotina. Uma pausa gostosa, no seu ritmo, é tudo de bom.",
         "icon": "no-pique.png",
     },
     "formiguinha": {

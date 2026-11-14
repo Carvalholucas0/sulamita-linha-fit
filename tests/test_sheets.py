@@ -48,9 +48,10 @@ class GoogleSheetsSyncTests(unittest.TestCase):
             product_interest="quiches",
             experience_preference="store_combo",
             communication_interest="home_orders",
-            campaign_source="Evento Linha Fit — São Francisco — 31/10/2026",
-            quiz_version="sulalover-2026-10-29-v1",
+            campaign_source="Quiz SulaLover",
+            quiz_version="sulalover-standard-v1",
             profile="raiz",
+            reward="mate",
             created_at=datetime(2026, 10, 27, tzinfo=timezone.utc),
         )
 
@@ -64,6 +65,7 @@ class GoogleSheetsSyncTests(unittest.TestCase):
         self.assertEqual(row[16], "Não")
         self.assertEqual(row[17], "2026-10-27T00:00:00+00:00")
         self.assertEqual(row[18], "whatsapp-ofertas-v1")
+        self.assertEqual(row[-1], "mate")
 
     def test_sync_writes_to_stable_row_as_raw_values(self):
         registration = SimpleNamespace(
@@ -96,9 +98,10 @@ class GoogleSheetsSyncTests(unittest.TestCase):
             product_interest="quiches",
             experience_preference="store_combo",
             communication_interest="home_orders",
-            campaign_source="Evento Linha Fit — São Francisco — 31/10/2026",
-            quiz_version="sulalover-2026-10-29-v1",
+            campaign_source="Quiz SulaLover",
+            quiz_version="sulalover-standard-v1",
             profile="raiz",
+            reward="mate",
             created_at=datetime(2026, 10, 27, tzinfo=timezone.utc),
         )
         client = patch("gspread.authorize").start()
@@ -123,7 +126,7 @@ class GoogleSheetsSyncTests(unittest.TestCase):
         client.return_value.set_timeout.assert_called_once_with((5, 15))
         worksheet.update.assert_called_once()
         args, kwargs = worksheet.update.call_args
-        self.assertEqual(args[0], "A5:V5")
+        self.assertEqual(args[0], "A5:W5")
         self.assertEqual(kwargs["value_input_option"], "RAW")
         self.assertEqual(args[1][0][1], "=not a formula")
 

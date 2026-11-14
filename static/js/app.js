@@ -106,14 +106,15 @@ function renderQuestion() {
     document.getElementById("prev-btn").style.visibility = questionIndex === 0 ? "hidden" : "visible";
     const nextButton = document.getElementById("next-btn");
     nextButton.innerHTML = questionIndex === questions.length - 1
-        ? 'Concluir e participar <span aria-hidden="true">→</span>'
+        ? 'Concluir quiz <span aria-hidden="true">→</span>'
         : 'Continuar <span aria-hidden="true">→</span>';
     nextButton.disabled = !answers[question.id];
 }
 
-function renderResult(profile) {
+function renderResult(profile, reward) {
     document.getElementById("result-title").textContent = profile.title;
     document.getElementById("result-description").textContent = profile.description;
+    document.getElementById("reward-message").textContent = reward;
     const icon = document.getElementById("result-icon");
     icon.src = `/static/img/${encodeURIComponent(profile.icon)}`;
     icon.alt = "";
@@ -148,7 +149,7 @@ async function submitQuiz(button) {
     payload.submission_key = submissionKeys.get(payloadSignature);
 
     button.disabled = true;
-    button.textContent = "Salvando sua participação...";
+    button.textContent = "Salvando seu cadastro...";
     setError(document.getElementById("quiz-error"));
     try {
         const response = await fetch("/api/submit", {
@@ -162,11 +163,11 @@ async function submitQuiz(button) {
                 showScreen(screens.signup, `#${result.field}`);
                 setFieldError(result.field, result.error);
             } else {
-                throw new Error(result.error || "Não foi possível salvar sua participação.");
+                throw new Error(result.error || "Não foi possível salvar seu cadastro.");
             }
             return;
         }
-        renderResult(result.profile);
+        renderResult(result.profile, result.reward);
     } catch (error) {
         setError(
             document.getElementById("quiz-error"),

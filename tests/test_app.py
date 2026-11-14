@@ -6,7 +6,7 @@ from unittest.mock import patch
 from app import create_app
 from models import Lead, MarketingConsentEvent, Registration, SheetSyncJob, db
 from openpyxl import load_workbook
-from quiz import QUESTIONS
+from quiz import QUESTIONS, REWARDS
 from sheets import SheetSyncError
 
 
@@ -67,7 +67,8 @@ class SulamitaAppTests(unittest.TestCase):
             self.assertEqual(registration.frequency, "weekly")
             self.assertEqual(registration.product_interest, "quiches")
             self.assertEqual(registration.profile, "raiz")
-            self.assertEqual(registration.campaign_source, "Evento Linha Fit — São Francisco — 31/10/2026")
+            self.assertEqual(registration.campaign_source, "Quiz SulaLover")
+            self.assertEqual(response.json["reward"], REWARDS[registration.reward])
             self.assertIn("Toda semana", registration.answer_snapshot_json)
             self.assertFalse(registration.marketing_consent)
             self.assertIsNone(registration.marketing_consent_at)
@@ -134,10 +135,25 @@ class SulamitaAppTests(unittest.TestCase):
 
         self.assertEqual(first.status_code, 200)
         self.assertEqual(retry.status_code, 200)
+        self.assertEqual(first.json["reward"], retry.json["reward"])
         with self.app.app_context():
             self.assertEqual(Lead.query.count(), 1)
             self.assertEqual(Registration.query.count(), 1)
             self.assertEqual(MarketingConsentEvent.query.count(), 1)
+            self.assertIsNotNone(Registration.query.one().reward)
+
+    def test_each_reward_can_be_assigned(self):
+        for index, reward_id in enumerate(REWARDS, start=1):
+            payload = self.valid_payload()
+            payload["whatsapp"] = f"1199999999{index}"
+            payload["submission_key"] = (
+                f"33333333-3333-4333-8333-33333333333{index}"
+            )
+            with patch("app.secrets.choice", return_value=reward_id):
+                response = self.client.post("/api/submit", json=payload)
+
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.json["reward"], REWARDS[reward_id])
 
     def test_submission_is_saved_when_sheet_sync_fails_and_admin_retries(self):
         self.app.config.update(
@@ -248,9 +264,13 @@ class SulamitaAppTests(unittest.TestCase):
 
         answers = workbook["Respostas"]
         self.assertEqual(answers.max_row, 3)
-        self.assertEqual(answers["G2"].value, "Depois da corrida, caminhada ou treino. Afinal, eu treino pra isso!")
-        self.assertEqual(answers["K2"].value, "Não")
-        self.assertEqual(answers["K3"].value, "Sim")
+        self.assertIn(answers["F2"].value, REWARDS.values())
+        self.assertEqual(
+            answers["H2"].value,
+            "Depois da corrida, caminhada ou treino. Afinal, eu treino pra isso!",
+        )
+        self.assertEqual(answers["L2"].value, "Não")
+        self.assertEqual(answers["L3"].value, "Sim")
         self.assertEqual(answers["B3"].value, "'=1+1")
 
         summary = workbook["Resumo"]
@@ -264,6 +284,14 @@ class SulamitaAppTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         page = response.get_data(as_text=True)
         self.assertIn("Qual SulaLover é você?", page)
-        self.assertIn("preencha seus dados e responda às cinco perguntas", page)
+        self.assertIn("preencha seus dados e responda às cinco perguntas", page.lower())
         self.assertNotIn("cadastro é opcional", page)
+        self.assertNotIn("31/10/2026", page)
+        self.assertNotIn("Linha Fit", page)
+        self.assertNotIn("sorteio", page.lower())
+        self.assertIn("Seu brinde surpresa", page)
+        self.assertIn("Tire um print desta tela", " ".join(REWARDS.values()))
         self.assertEqual(self.client.get("/privacidade").status_code, 200)
+        privacy_page = self.client.get("/privacidade").get_data(as_text=True)
+        self.assertNotIn("Linha Fit", privacy_page)
+        self.assertNotIn("sorteio", privacy_page.lower())

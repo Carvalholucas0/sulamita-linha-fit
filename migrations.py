@@ -65,6 +65,7 @@ REGISTRATION_COLUMNS = {
     "campaign_source": "VARCHAR(160)",
     "quiz_version": "VARCHAR(80)",
     "submission_key": "VARCHAR(36)",
+    "reward": "VARCHAR(40)",
 }
 
 

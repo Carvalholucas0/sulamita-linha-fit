@@ -32,6 +32,7 @@ class Registration(db.Model):
     quiz_version = db.Column(db.String(80))
     submission_key = db.Column(db.String(36), unique=True)
     profile = db.Column(db.String(40), nullable=False)
+    reward = db.Column(db.String(40))
     created_at = db.Column(
         db.DateTime(timezone=True),
         nullable=False,
